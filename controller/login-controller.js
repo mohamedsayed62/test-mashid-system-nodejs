@@ -1,0 +1,52 @@
+const user = require('../models/user');
+const asyncMiddleware = require('../middleware/async-middleware');
+const { validationResult } = require('express-validator');
+const errorHandler = require('../utils/error-handler');
+
+const storeUser = asyncMiddleware(async (req, res, next) => {
+  let storeUser;
+  
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    
+    const Handler = new errorHandler('Fail', errors.array().msg, 400);
+    return next(Handler);
+  }
+
+  const getUser = await user.findOne({ name: req.body.name });
+  if (getUser) {
+    storeUser = getUser;
+  } else {
+    storeUser = await new user({
+      name: req.body.name
+    });
+    storeUser.save();
+  }
+
+
+  res.json({status: 'success', message: 'User stored successfully', code: 200, data: storeUser});
+});
+
+const getUser = asyncMiddleware(async (req, res, next) => {
+  const getUser = await user.findById(req.params.id);
+
+  if (!getUser) {
+    const Handler = new errorHandler('Fail', 'المستخدم غير موجود', 400);
+    return next(Handler);
+  }
+
+  res.json({ status: 'success', message: 'User retrieved successfully', code: 200, data: getUser });
+});
+
+const deleteUser = asyncMiddleware(async (req, res, next) => {
+  await user.findByIdAndDelete(req.params.id);
+
+  res.json({ status: 'success', message: 'تم حذف المحفظ', code: 200})
+})
+
+
+module.exports = {
+  storeUser,
+  getUser,
+  deleteUser
+};
